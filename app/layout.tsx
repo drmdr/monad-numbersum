@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={darumadrop.className}>
+      <body className={`${darumadrop.className} overflow-hidden`}>
         <Providers>{children}</Providers>
       </body>
     </html>
