@@ -1,13 +1,9 @@
+import App from '@/components/pages/app';
 import { APP_URL } from '@/lib/constants';
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
-
-// 動的にクライアントコンポーネントをインポートし、サーバーサイドレンダリング(SSR)を無効にする
-const App = dynamic(() => import('@/components/pages/app'), { ssr: false });
 
 const frame = {
   version: 'next',
-  // TODO: ゲーム画面のサムネイルに差し替える
   imageUrl: `${APP_URL}/images/feed.png`,
   button: {
     title: 'Launch Number Sum',
