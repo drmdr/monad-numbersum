@@ -1,6 +1,6 @@
 'use client'
 
-import { Demo } from '@/components/Home'
+import NumberPuzzle from "@/components/Game/NumberPuzzle";
 import { useFrame } from '@/components/farcaster-provider'
 import { SafeAreaContainer } from '@/components/safe-area-container'
 
@@ -17,7 +17,7 @@ export default function Home() {
     )
   }
 
-  if (!isSDKLoaded) {
+    if (!isSDKLoaded && process.env.NODE_ENV !== 'development') {
     return (
       <SafeAreaContainer insets={context?.client.safeAreaInsets}>
         <div className="flex min-h-screen flex-col items-center justify-center p-4 space-y-8">
@@ -31,7 +31,7 @@ export default function Home() {
 
   return (
     <SafeAreaContainer insets={context?.client.safeAreaInsets}>
-      <Demo />
+      <NumberPuzzle />
     </SafeAreaContainer>
   )
 }

@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Darumadrop_One } from 'next/font/google'
 
 import { Providers } from '@/components/providers'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const darumadrop = Darumadrop_One({
+  subsets: ['latin'],
+  weight: '400',
+})
 
 export const metadata: Metadata = {
   title: 'Monad Farcaster MiniApp Template',
@@ -18,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={darumadrop.className}>
         <Providers>{children}</Providers>
       </body>
     </html>
