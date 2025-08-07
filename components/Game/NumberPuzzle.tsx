@@ -2,25 +2,61 @@
 
 import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Settings, Star, RotateCcw, Lightbulb, Check } from "lucide-react"
+import { Settings, Star, RotateCcw, Lightbulb, Check, Heart } from "lucide-react"
+
+// 難易度設定
+const difficulties = {
+  easy: {
+    label: "Easy",
+    rowTargets: [15, 18, 12, 16, 14],
+    colTargets: [14, 16, 15, 17, 13],
+    grid: [
+      [3, 4, 2, 5, 1],
+      [4, 3, 5, 2, 4],
+      [2, 5, 3, 4, 1],
+      [3, 2, 4, 1, 6],
+      [2, 2, 1, 5, 1],
+    ]
+  },
+  normal: {
+    label: "Normal",
+    rowTargets: [19, 25, 20, 22, 24],
+    colTargets: [20, 22, 24, 26, 20],
+    grid: [
+      [5, 3, 4, 6, 7],
+      [6, 7, 2, 1, 9],
+      [1, 9, 8, 3, 4],
+      [8, 5, 9, 7, 6],
+      [4, 2, 6, 8, 5],
+    ]
+  },
+  hard: {
+    label: "Hard",
+    rowTargets: [28, 32, 35, 30, 33],
+    colTargets: [31, 29, 34, 32, 32],
+    grid: [
+      [8, 7, 9, 6, 8],
+      [7, 5, 8, 9, 7],
+      [9, 8, 7, 6, 9],
+      [6, 4, 5, 8, 7],
+      [8, 7, 9, 6, 5],
+    ]
+  }
+}
 
 export default function NumberPuzzle() {
   // Game state
-  const [level, setLevel] = useState(1)
-  const [score, setScore] = useState(1250)
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('easy')
+  const [score, setScore] = useState(0)
   const [isWin, setIsWin] = useState(false)
+  const [lives, setLives] = useState(3)
+  const [showHint, setShowHint] = useState(false)
+  const [attempts, setAttempts] = useState(0)
 
   // Puzzle data
-  const [grid, setGrid] = useState([
-    [5, 3, 4, 6, 7],
-    [6, 7, 2, 1, 9],
-    [1, 9, 8, 3, 4],
-    [8, 5, 9, 7, 6],
-    [4, 2, 6, 8, 5],
-  ])
-  // The solution requires deactivating certain cells. These targets are calculated based on a pre-defined solution.
-  const rowTargets = [19, 25, 20, 22, 24]
-  const colTargets = [20, 22, 24, 26, 20]
+  const [grid, setGrid] = useState(difficulties.easy.grid)
+  const [rowTargets, setRowTargets] = useState(difficulties.easy.rowTargets)
+  const [colTargets, setColTargets] = useState(difficulties.easy.colTargets)
 
   const [activeCells, setActiveCells] = useState<boolean[][]>(
     Array(5)
@@ -31,6 +67,15 @@ export default function NumberPuzzle() {
   // Derived state
   const [completedRows, setCompletedRows] = useState<boolean[]>(new Array(5).fill(false))
   const [completedCols, setCompletedCols] = useState<boolean[]>(new Array(5).fill(false))
+
+  // 難易度変更時の処理
+  const changeDifficulty = (newDifficulty: 'easy' | 'normal' | 'hard') => {
+    setDifficulty(newDifficulty)
+    setGrid(difficulties[newDifficulty].grid)
+    setRowTargets(difficulties[newDifficulty].rowTargets)
+    setColTargets(difficulties[newDifficulty].colTargets)
+    resetGame()
+  }
 
   // Game logic
   useEffect(() => {
@@ -54,14 +99,43 @@ export default function NumberPuzzle() {
     const allCompleted = newCompletedRows.every(Boolean) && newCompletedCols.every(Boolean)
     if (allCompleted) {
       setIsWin(true)
+      // 難易度に応じたスコア加算
+      const difficultyMultiplier = difficulty === 'easy' ? 1 : difficulty === 'normal' ? 2 : 3
+      setScore(prevScore => prevScore + 1000 * difficultyMultiplier)
     }
-  }, [activeCells, grid, rowTargets, colTargets])
+  }, [activeCells, grid, rowTargets, colTargets, difficulty])
 
   const handleCellClick = (row: number, col: number) => {
     if (isWin) return // Don't allow changes after winning
+
     const newActiveCells = activeCells.map((r) => [...r])
     newActiveCells[row][col] = !newActiveCells[row][col]
     setActiveCells(newActiveCells)
+    
+    // 試行回数を増やす
+    setAttempts(attempts + 1)
+    
+    // 10回試行ごとにチェック
+    if ((attempts + 1) % 10 === 0) {
+      const rowsCompleted = completedRows.filter(Boolean).length
+      const colsCompleted = completedCols.filter(Boolean).length
+      
+      // 進捗が少ない場合はライフを減らす
+      if (rowsCompleted + colsCompleted < 3) {
+        setLives(prev => {
+          const newLives = prev - 1
+          if (newLives <= 0) {
+            // ゲームオーバー処理
+            setTimeout(() => {
+              alert('ゲームオーバー！ライフがなくなりました。')
+              resetGame()
+              setLives(3)
+            }, 500)
+          }
+          return newLives
+        })
+      }
+    }
   }
 
   const resetGame = () => {
@@ -71,28 +145,69 @@ export default function NumberPuzzle() {
         .map(() => Array(5).fill(true))
     )
     setIsWin(false)
+    setShowHint(false)
+    setAttempts(0)
   }
 
   const nextLevel = () => {
-    // TODO: Implement next level logic
-    resetGame()
+    // 難易度に応じて次のレベルへ
+    if (difficulty === 'easy') {
+      changeDifficulty('normal')
+    } else if (difficulty === 'normal') {
+      changeDifficulty('hard')
+    } else {
+      // Hardをクリアした場合は同じ難易度で別パターン
+      resetGame()
+    }
+  }
+
+  // ヒント表示
+  const showHintHandler = () => {
+    setShowHint(true)
+    setTimeout(() => {
+      setShowHint(false)
+    }, 3000)
+  }
+
+  // ヒントロジック - 各行・列で1つだけ非アクティブにすべきセルを示す
+  const getHint = () => {
+    const hints: [number, number][] = []
+    
+    // 各行でチェック
+    rowTargets.forEach((target, rowIndex) => {
+      if (!completedRows[rowIndex]) {
+        const sum = grid[rowIndex].reduce((acc, val, colIndex) => {
+          return activeCells[rowIndex][colIndex] ? acc + val : acc
+        }, 0)
+        
+        // 合計が目標より大きい場合、1つ非アクティブにすべきセルを見つける
+        if (sum > target) {
+          for (let colIndex = 0; colIndex < 5; colIndex++) {
+            if (activeCells[rowIndex][colIndex] && sum - grid[rowIndex][colIndex] === target) {
+              hints.push([rowIndex, colIndex])
+              break
+            }
+          }
+        }
+      }
+    })
+    
+    return hints.length > 0 ? hints[0] : null
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 text-white flex flex-col p-4 font-sans">
-      {/* Starry background */}
-      <div className="absolute inset-0 pointer-events-none">
+    <div className="min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-indigo-900 text-white flex flex-col p-4">
+      {/* 水玉背景 */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[...Array(50)].map((_, i) => (
           <div
             key={i}
-            className="absolute bg-white rounded-full animate-pulse"
+            className="absolute bg-white/10 rounded-full"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              width: `${Math.random() * 2 + 1}px`,
-              height: `${Math.random() * 2 + 1}px`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${Math.random() * 2 + 2}s`,
+              width: `${Math.random() * 50 + 20}px`,
+              height: `${Math.random() * 50 + 20}px`,
             }}
           />
         ))}
@@ -101,24 +216,33 @@ export default function NumberPuzzle() {
       {/* Header */}
       <header className="w-full max-w-md mx-auto flex justify-between items-center py-2 z-10">
         <h1 className="text-2xl sm:text-3xl font-bold">Monad Number Sums</h1>
-        <Button variant="ghost" size="icon" className="hover:bg-white/20">
-          <Settings className="w-6 h-6" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {[...Array(lives)].map((_, i) => (
+            <Heart key={i} className="w-5 h-5 text-red-500 fill-red-500" />
+          ))}
+        </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-white">{score}</div>
           <div className="text-sm text-gray-400">SCORE</div>
         </div>
       </header>
 
-      {/* Game Info */}
+      {/* 難易度選択 */}
       <section className="w-full max-w-md mx-auto flex justify-around items-center py-2 z-10">
-        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-          <span className="text-yellow-400 font-bold">Lv</span>
-          <span className="font-bold text-lg">{level}</span>
-        </div>
-        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-          <Star className="w-6 h-6 text-yellow-400" />
-          <span className="font-bold text-lg">{score}</span>
+        <div className="flex items-center gap-2">
+          {(['easy', 'normal', 'hard'] as const).map((diff) => (
+            <button
+              key={diff}
+              onClick={() => changeDifficulty(diff)}
+              className={`px-4 py-2 rounded-full font-bold transition-all ${
+                difficulty === diff 
+                  ? 'bg-yellow-400 text-purple-900' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              {difficulties[diff].label}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -130,7 +254,11 @@ export default function NumberPuzzle() {
             {colTargets.map((target, colIndex) => (
               <div
                 key={`col-target-${colIndex}`}
-                className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${completedCols[colIndex] ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" : "bg-white/20"}`}
+                className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${
+                  completedCols[colIndex] 
+                    ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" 
+                    : "bg-yellow-400/70 text-purple-900"
+                }`}
               >
                 {target}
               </div>
@@ -139,7 +267,11 @@ export default function NumberPuzzle() {
               <React.Fragment key={`row-wrapper-${rowIndex}`}>
                 <div
                   key={`row-target-${rowIndex}`}
-                  className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${completedRows[rowIndex] ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" : "bg-white/20"}`}
+                  className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${
+                    completedRows[rowIndex] 
+                      ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" 
+                      : "bg-yellow-400/70 text-purple-900"
+                  }`}
                 >
                   {rowTargets[rowIndex]}
                 </div>
@@ -148,9 +280,22 @@ export default function NumberPuzzle() {
                     key={`cell-${rowIndex}-${colIndex}`}
                     onClick={() => handleCellClick(rowIndex, colIndex)}
                     disabled={isWin}
-                    className={`aspect-square rounded-lg flex items-center justify-center font-bold text-xl sm:text-2xl transition-all duration-300 transform ${activeCells[rowIndex][colIndex] ? "bg-white/20 opacity-100" : "bg-black/20 opacity-50"} ${!isWin && "hover:bg-white/30 active:scale-95"}`}
+                    className={`aspect-square rounded-lg flex items-center justify-center font-bold text-xl sm:text-2xl transition-all duration-300 transform relative
+                      ${activeCells[rowIndex][colIndex] 
+                        ? "bg-white/20 opacity-100" 
+                        : "bg-black/20 opacity-50"
+                      } 
+                      ${!isWin && "hover:bg-white/30 active:scale-95"}
+                      ${showHint && getHint() && getHint()?.[0] === rowIndex && getHint()?.[1] === colIndex 
+                        ? "ring-4 ring-yellow-400 animate-pulse" 
+                        : ""
+                      }
+                    `}
                   >
                     {cell}
+                    {activeCells[rowIndex][colIndex] && (
+                      <span className="absolute w-full h-full rounded-full border-2 border-white/50"></span>
+                    )}
                   </button>
                 ))}
               </React.Fragment>
@@ -159,6 +304,11 @@ export default function NumberPuzzle() {
         </div>
       </main>
 
+      {/* ゲーム説明 */}
+      <div className="w-full max-w-md mx-auto text-center text-sm text-white/80 mb-4 z-10">
+        <p>各行・列の数字の合計が目標値（黄色の数字）と一致するように、数字をクリックしてオン/オフを切り替えてください。</p>
+      </div>
+
       {/* Action Buttons */}
       <footer className="w-full max-w-md mx-auto flex justify-around items-center py-2 z-10">
         <Button
@@ -166,11 +316,14 @@ export default function NumberPuzzle() {
           className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
         >
           <RotateCcw className="w-5 h-5 mr-2" />
-          Reset
+          リセット
         </Button>
-        <Button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200">
+        <Button 
+          onClick={showHintHandler}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
+        >
           <Lightbulb className="w-5 h-5 mr-2" />
-          Hint
+          ヒント
         </Button>
       </footer>
 
@@ -178,14 +331,36 @@ export default function NumberPuzzle() {
       {isWin && (
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="text-center bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-8 shadow-2xl transform scale-100 transition-transform duration-300">
-            <h2 className="text-4xl font-bold text-yellow-300 mb-4">Congratulations!</h2>
-            <p className="text-lg mb-6">You cleared the puzzle!</p>
+            <h2 className="text-4xl font-bold text-yellow-300 mb-4">おめでとう！</h2>
+            <p className="text-lg mb-6">パズルをクリアしました！</p>
             <div className="mt-6">
               <button
                 onClick={nextLevel}
                 className="w-full px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors text-lg"
               >
-                Next Level
+                次のレベル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Game Over Modal */}
+      {lives <= 0 && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="text-center bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-8 shadow-2xl transform scale-100 transition-transform duration-300">
+            <h2 className="text-4xl font-bold text-white mb-4">ゲームオーバー</h2>
+            <p className="text-lg mb-6">ライフがなくなりました。</p>
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  resetGame()
+                  setLives(3)
+                  setScore(0)
+                }}
+                className="w-full px-6 py-3 bg-red-500 text-white font-bold rounded-lg hover:bg-red-600 transition-colors text-lg"
+              >
+                最初からやり直す
               </button>
             </div>
           </div>
