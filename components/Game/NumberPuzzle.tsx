@@ -4,42 +4,64 @@ import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Settings, Star, RotateCcw, Lightbulb, Check, Heart } from "lucide-react"
 
-// 難易度設定
+// 難易度設定 - 数学的に解が存在し、適度な難易度になるよう設計
 const difficulties = {
   easy: {
     label: "Easy",
-    rowTargets: [15, 18, 12, 16, 14],
-    colTargets: [14, 16, 15, 17, 13],
+    rowTargets: [8, 11, 7, 9, 10],
+    colTargets: [9, 8, 10, 7, 11],
     grid: [
-      [3, 4, 2, 5, 1],
-      [4, 3, 5, 2, 4],
-      [2, 5, 3, 4, 1],
-      [3, 2, 4, 1, 6],
-      [2, 2, 1, 5, 1],
+      [3, 2, 4, 1, 2],
+      [2, 3, 1, 4, 3],
+      [1, 2, 3, 1, 2],
+      [4, 1, 2, 1, 3],
+      [2, 1, 3, 2, 4],
+    ],
+    // 解答例（true=選択, false=非選択）
+    solution: [
+      [true, true, false, true, true],
+      [true, true, true, false, true],
+      [true, false, true, true, false],
+      [false, true, true, true, true],
+      [true, true, false, false, true],
     ]
   },
   normal: {
     label: "Normal",
-    rowTargets: [19, 25, 20, 22, 24],
-    colTargets: [20, 22, 24, 26, 20],
+    rowTargets: [12, 15, 10, 14, 13],
+    colTargets: [13, 11, 14, 12, 14],
     grid: [
-      [5, 3, 4, 6, 7],
-      [6, 7, 2, 1, 9],
-      [1, 9, 8, 3, 4],
-      [8, 5, 9, 7, 6],
-      [4, 2, 6, 8, 5],
+      [4, 3, 5, 2, 3],
+      [3, 2, 4, 5, 4],
+      [2, 4, 1, 3, 2],
+      [5, 1, 3, 2, 6],
+      [3, 2, 4, 1, 5],
+    ],
+    solution: [
+      [true, false, true, true, true],
+      [true, true, true, false, true],
+      [false, true, false, true, true],
+      [true, true, true, true, false],
+      [true, true, false, true, true],
     ]
   },
   hard: {
     label: "Hard",
-    rowTargets: [28, 32, 35, 30, 33],
-    colTargets: [31, 29, 34, 32, 32],
+    rowTargets: [18, 21, 16, 19, 20],
+    colTargets: [19, 17, 20, 18, 20],
     grid: [
-      [8, 7, 9, 6, 8],
-      [7, 5, 8, 9, 7],
-      [9, 8, 7, 6, 9],
-      [6, 4, 5, 8, 7],
-      [8, 7, 9, 6, 5],
+      [6, 4, 7, 3, 5],
+      [5, 6, 3, 7, 4],
+      [3, 5, 4, 2, 6],
+      [7, 2, 6, 4, 3],
+      [4, 3, 5, 6, 7],
+    ],
+    solution: [
+      [true, false, true, true, true],
+      [true, true, false, true, true],
+      [true, true, true, false, false],
+      [false, true, true, true, true],
+      [true, true, true, false, true],
     ]
   }
 }
@@ -52,6 +74,8 @@ export default function NumberPuzzle() {
   const [lives, setLives] = useState(3)
   const [showHint, setShowHint] = useState(false)
   const [attempts, setAttempts] = useState(0)
+  const [correctFeedback, setCorrectFeedback] = useState<{ [key: string]: boolean }>({})
+  const [solution, setSolution] = useState(difficulties.easy.solution)
 
   // Puzzle data
   const [grid, setGrid] = useState(difficulties.easy.grid)
@@ -61,7 +85,7 @@ export default function NumberPuzzle() {
   const [activeCells, setActiveCells] = useState<boolean[][]>(
     Array(5)
       .fill(null)
-      .map(() => Array(5).fill(true))
+      .map(() => Array(5).fill(false))
   )
 
   // Derived state
@@ -74,6 +98,7 @@ export default function NumberPuzzle() {
     setGrid(difficulties[newDifficulty].grid)
     setRowTargets(difficulties[newDifficulty].rowTargets)
     setColTargets(difficulties[newDifficulty].colTargets)
+    setSolution(difficulties[newDifficulty].solution)
     resetGame()
   }
 
@@ -111,15 +136,32 @@ export default function NumberPuzzle() {
     const newActiveCells = activeCells.map((r) => [...r])
     newActiveCells[row][col] = !newActiveCells[row][col]
     setActiveCells(newActiveCells)
-    
+
+    // 正解チェック - 解答と一致するかチェック
+    const isCorrectMove = newActiveCells[row][col] === solution[row][col]
+    if (isCorrectMove) {
+      // 正解フィードバックを表示
+      const key = `${row}-${col}`
+      setCorrectFeedback(prev => ({ ...prev, [key]: true }))
+
+      // 2秒後にフィードバックを消す
+      setTimeout(() => {
+        setCorrectFeedback(prev => {
+          const newFeedback = { ...prev }
+          delete newFeedback[key]
+          return newFeedback
+        })
+      }, 2000)
+    }
+
     // 試行回数を増やす
     setAttempts(attempts + 1)
-    
+
     // 10回試行ごとにチェック
     if ((attempts + 1) % 10 === 0) {
       const rowsCompleted = completedRows.filter(Boolean).length
       const colsCompleted = completedCols.filter(Boolean).length
-      
+
       // 進捗が少ない場合はライフを減らす
       if (rowsCompleted + colsCompleted < 3) {
         setLives(prev => {
@@ -139,14 +181,16 @@ export default function NumberPuzzle() {
   }
 
   const resetGame = () => {
+    // 初期状態は全て非選択（false）にする
     setActiveCells(
       Array(5)
         .fill(null)
-        .map(() => Array(5).fill(true))
+        .map(() => Array(5).fill(false))
     )
     setIsWin(false)
     setShowHint(false)
     setAttempts(0)
+    setCorrectFeedback({})
   }
 
   const nextLevel = () => {
@@ -172,14 +216,14 @@ export default function NumberPuzzle() {
   // ヒントロジック - 各行・列で1つだけ非アクティブにすべきセルを示す
   const getHint = () => {
     const hints: [number, number][] = []
-    
+
     // 各行でチェック
     rowTargets.forEach((target, rowIndex) => {
       if (!completedRows[rowIndex]) {
         const sum = grid[rowIndex].reduce((acc, val, colIndex) => {
           return activeCells[rowIndex][colIndex] ? acc + val : acc
         }, 0)
-        
+
         // 合計が目標より大きい場合、1つ非アクティブにすべきセルを見つける
         if (sum > target) {
           for (let colIndex = 0; colIndex < 5; colIndex++) {
@@ -191,7 +235,7 @@ export default function NumberPuzzle() {
         }
       }
     })
-    
+
     return hints.length > 0 ? hints[0] : null
   }
 
@@ -234,11 +278,10 @@ export default function NumberPuzzle() {
             <button
               key={diff}
               onClick={() => changeDifficulty(diff)}
-              className={`px-4 py-2 rounded-full font-bold transition-all ${
-                difficulty === diff 
-                  ? 'bg-yellow-400 text-purple-900' 
+              className={`px-4 py-2 rounded-full font-bold transition-all ${difficulty === diff
+                  ? 'bg-yellow-400 text-purple-900'
                   : 'bg-white/10 text-white hover:bg-white/20'
-              }`}
+                }`}
             >
               {difficulties[diff].label}
             </button>
@@ -254,11 +297,10 @@ export default function NumberPuzzle() {
             {colTargets.map((target, colIndex) => (
               <div
                 key={`col-target-${colIndex}`}
-                className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${
-                  completedCols[colIndex] 
-                    ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" 
-                    : "bg-yellow-400/70 text-purple-900"
-                }`}
+                className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${completedCols[colIndex]
+                    ? "bg-green-400 text-white shadow-lg shadow-green-400/50"
+                    : "bg-yellow-400 text-purple-900"
+                  }`}
               >
                 {target}
               </div>
@@ -267,11 +309,10 @@ export default function NumberPuzzle() {
               <React.Fragment key={`row-wrapper-${rowIndex}`}>
                 <div
                   key={`row-target-${rowIndex}`}
-                  className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${
-                    completedRows[rowIndex] 
-                      ? "bg-yellow-400 text-purple-900 shadow-lg shadow-yellow-400/50" 
-                      : "bg-yellow-400/70 text-purple-900"
-                  }`}
+                  className={`aspect-square rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl transition-all duration-300 ${completedRows[rowIndex]
+                      ? "bg-green-400 text-white shadow-lg shadow-green-400/50"
+                      : "bg-yellow-400 text-purple-900"
+                    }`}
                 >
                   {rowTargets[rowIndex]}
                 </div>
@@ -281,13 +322,13 @@ export default function NumberPuzzle() {
                     onClick={() => handleCellClick(rowIndex, colIndex)}
                     disabled={isWin}
                     className={`aspect-square rounded-lg flex items-center justify-center font-bold text-xl sm:text-2xl transition-all duration-300 transform relative
-                      ${activeCells[rowIndex][colIndex] 
-                        ? "bg-white/20 opacity-100" 
+                      ${activeCells[rowIndex][colIndex]
+                        ? "bg-white/20 opacity-100"
                         : "bg-black/20 opacity-50"
                       } 
                       ${!isWin && "hover:bg-white/30 active:scale-95"}
-                      ${showHint && getHint() && getHint()?.[0] === rowIndex && getHint()?.[1] === colIndex 
-                        ? "ring-4 ring-yellow-400 animate-pulse" 
+                      ${showHint && getHint() && getHint()?.[0] === rowIndex && getHint()?.[1] === colIndex
+                        ? "ring-4 ring-yellow-400 animate-pulse"
                         : ""
                       }
                     `}
@@ -295,6 +336,14 @@ export default function NumberPuzzle() {
                     {cell}
                     {activeCells[rowIndex][colIndex] && (
                       <span className="absolute w-full h-full rounded-full border-2 border-white/50"></span>
+                    )}
+                    {/* 正解フィードバック - グリーンの○ */}
+                    {correctFeedback[`${rowIndex}-${colIndex}`] && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center animate-ping">
+                          <Check className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
                     )}
                   </button>
                 ))}
@@ -306,7 +355,8 @@ export default function NumberPuzzle() {
 
       {/* ゲーム説明 */}
       <div className="w-full max-w-md mx-auto text-center text-sm text-white/80 mb-4 z-10">
-        <p>各行・列の数字の合計が目標値（黄色の数字）と一致するように、数字をクリックしてオン/オフを切り替えてください。</p>
+        <p>各行・列の数字の合計が目標値（黄色の数字）と一致するように、数字をクリックして選択してください。</p>
+        <p className="mt-1 text-xs">選択した数字には白い丸が表示されます。目標達成した行・列は緑色になります。</p>
       </div>
 
       {/* Action Buttons */}
@@ -318,7 +368,7 @@ export default function NumberPuzzle() {
           <RotateCcw className="w-5 h-5 mr-2" />
           リセット
         </Button>
-        <Button 
+        <Button
           onClick={showHintHandler}
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-105 transition-all duration-200"
         >
