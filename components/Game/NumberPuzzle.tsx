@@ -283,7 +283,7 @@ export default function NumberPuzzle() {
       }
 
       // データをhexエンコード
-      const dataHex = `0x${Buffer.from(JSON.stringify(scoreData)).toString('hex')}`
+      const dataHex = `0x${Buffer.from(JSON.stringify(scoreData)).toString('hex')}` as `0x${string}`
 
       // 小額のトランザクションでスコアを記録
       sendTransaction({
